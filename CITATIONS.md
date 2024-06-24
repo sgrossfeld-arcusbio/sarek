@@ -1,5 +1,9 @@
 # nf-core/sarek: Citations
 
+## [nf-core/sarek 3](https://www.biorxiv.org/content/10.1101/2023.07.19.549462v2)
+
+> Hanssen F, Garcia MU, Folkersen L, Pedersen AS, Lescai F, Jodoin S, Miller E, Wacker O, Smith N, nf-core community, Gabernet G, Nahnsen S. Scalable and efficient DNA sequencing analysis on different compute infrastructures aiding variant discovery. bioRxiv. 2023 Jul 19:2023-07.
+
 ## [nf-core/sarek](https://pubmed.ncbi.nlm.nih.gov/32269765/)
 
 > Garcia MU, Juhos S, Larsson M, Olason PI, Martin M, Eisfeldt J, DiLorenzo S, Sandgren J, Díaz De Ståhl T, Ewels PA, Wirta V, Nistér M, Käller M, Nystedt B. Sarek: A portable workflow for whole-genome sequencing analysis of germline and somatic variants. F1000Res. 2020 Jan 29;9:63. eCollection 2020. doi: 10.12688/f1000research.16665.2. PubMed PMID: 32269765.
@@ -62,7 +66,11 @@
 
 - [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
 
+  > Andrews, S. (2010). FastQC: A Quality Control Tool for High Throughput Sequence Data [Online].
+
 - [FGBio](https://github.com/fulcrumgenomics/fgbio)
+
+  > doi: 10.5281/zenodo.10456900
 
 - [FreeBayes](https://arxiv.org/abs/1207.3907)
 
@@ -71,6 +79,8 @@
 - [GATK](https://pubmed.ncbi.nlm.nih.gov/20644199/)
 
   > McKenna A, Hanna M, Banks E, et al.: The Genome Analysis Toolkit: a MapReduce framework for analyzing next-generation DNA sequencing data. Genome Res. 2010 Sep;20(9):1297-303. doi: 10.1101/gr.107524.110. Epub 2010 Jul 19. PubMed PMID: 20644199; PubMed Central PMCID: PMC2928508.
+
+- [GNU sed](http://www.gnu.org/software/sed/)
 
 - [HaplotypeCaller Joint Germline](https://www.biorxiv.org/content/10.1101/201178v3)
 
@@ -94,7 +104,7 @@
 
 - [MultiQC](https://pubmed.ncbi.nlm.nih.gov/27312411/)
 
-  > Ewels P, Magnusson M, Lundin S, Käller M. MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics. 2016 Oct 1;32(19):3047-8. doi: 10.1093/bioinformatics/btw354. Epub 2016 Jun 16. PubMed PMID: 27312411. PubMed Central PMCID: PMC5039924.
+  > Ewels P, Magnusson M, Lundin S, Käller M. MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics. 2016 Oct 1;32(19):3047-8. doi: 10.1093/bioinformatics/btw354. Epub 2016 Jun 16. PubMed PMID: 27312411; PubMed Central PMCID: PMC5039924.
 
 - [PIGZ](https://zlib.net/pigz/)
 
@@ -107,8 +117,6 @@
 - [SAMtools](https://pubmed.ncbi.nlm.nih.gov/19505943/)
 
   > Li H, Handsaker B, Wysoker A, Fennell T, Ruan J, Homer N, Marth G, Abecasis G, Durbin R; 1000 Genome Project Data Processing Subgroup. The Sequence Alignment/Map format and SAMtools. Bioinformatics. 2009 Aug 15;25(16):2078-9. doi: 10.1093/bioinformatics/btp352. Epub 2009 Jun 8. PubMed PMID: 19505943; PubMed Central PMCID: PMC2723002.
-
-- [GNU sed](http://www.gnu.org/software/sed/)
 
 - [snpEff](https://pubmed.ncbi.nlm.nih.gov/22728672/)
 
@@ -163,6 +171,8 @@
   > da Veiga Leprevost F, Grüning B, Aflitos SA, Röst HL, Uszkoreit J, Barsnes H, Vaudel M, Moreno P, Gatto L, Weber J, Bai M, Jimenez RC, Sachsenberg T, Pfeuffer J, Alvarez RV, Griss J, Nesvizhskii AI, Perez-Riverol Y. BioContainers: an open-source and community-driven framework for software standardization. Bioinformatics. 2017 Aug 15;33(16):2580-2582. doi: 10.1093/bioinformatics/btx192. PubMed PMID: 28379341; PubMed Central PMCID: PMC5870671.
 
 - [Docker](https://dl.acm.org/doi/10.5555/2600239.2600241)
+
+  > Merkel, D. 2014. Docker: lightweight linux containers for consistent development and deployment. Linux Journal, 2014(239), 2. doi: 10.5555/2600239.2600241.
 
 - [Singularity](https://pubmed.ncbi.nlm.nih.gov/28494014/)
 

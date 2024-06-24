@@ -2,6 +2,8 @@
 
 ## :warning: Please read this documentation on the nf-core website: [https://nf-co.re/sarek/usage](https://nf-co.re/sarek/usage)
 
+> _Documentation of pipeline parameters is generated automatically from the pipeline schema and can no longer be found in markdown files._
+
 # Introduction
 
 Sarek is a workflow designed to detect germline and somatic variants on whole genome, whole exome, or targeted sequencing data.
@@ -16,10 +18,17 @@ Sarek is designed to handle single samples, such as single-normal or single-tumo
 The typical command for running the pipeline is as follows:
 
 ```bash
-nextflow run nf-core/sarek --input samplesheet.csv --outdir <OUTDIR> --genome GATK.GRCh38 -profile docker
+nextflow run nf-core/sarek -r <VERSION> -profile <PROFILE> --input ./samplesheet.csv --outdir ./results --genome GATK.GRCh38 --tools <TOOLS>
 ```
 
-This will launch the pipeline with the `docker` configuration profile. See below for more information about profiles.
+`-r <VERSION>` is optional but strongly recommended for reproducibility and should match the latest version.
+
+`-profile <PROFILE>` is mandatory and should reflect either your own institutional profile or any pipeline profile specified in the [profile section](##-profile).
+
+This documentation imply that any `nextflow run nf-core/sarek` command is run with the appropriate `-r` and `-profile` commands.
+
+This will launch the pipeline and perform variant calling with the tools specified in `--tools`, see the [parameter section](https://nf-co.re/sarek/latest/parameters#tools) for details on variant calling tools.
+In the above example the pipeline runs with the `docker` configuration profile. See below for more information about profiles.
 
 Note that the pipeline will create the following files in your working directory:
 
@@ -29,6 +38,31 @@ work                # Directory containing the nextflow working files
 .nextflow_log       # Log file from Nextflow
 # Other nextflow hidden files, eg. history of pipeline runs and old logs.
 ```
+
+If you wish to repeatedly use the same parameters for multiple runs, rather than specifying each flag in the command, you can specify these in a params file.
+
+Pipeline settings can be provided in a `yaml` or `json` file via `-params-file <file>`.
+
+:::warning
+Do not use `-c <file>` to specify parameters as this will result in errors. Custom config files specified with `-c` must only be used for [tuning process resource specifications](https://nf-co.re/docs/usage/configuration#tuning-workflow-resources), other infrastructural tweaks (such as output directories), or module arguments (args).
+:::
+
+The above pipeline run specified with a params file in yaml format:
+
+```bash
+nextflow run nf-core/sarek -params-file params.yaml
+```
+
+with `params.yaml` containing:
+
+```yaml
+input: './samplesheet.csv'
+outdir: './results/'
+genome: 'GATK.GRCh38'
+<...>
+```
+
+You can also generate such `YAML`/`JSON` files via [nf-core/launch](https://nf-co.re/launch).
 
 ## Input: Sample sheet configurations
 
@@ -142,7 +176,7 @@ patient,sample,cram,crai
 patient1,test_sample,test_mapped.cram,test_mapped.cram.crai
 ```
 
-The Sarek-generated CSV file is stored under `results/csv/mapped.csv` if in a previous run `--save_bam_mapped` was set and will automatically be used as an input when specifying the parameter `--step markduplicates`. Otherwise this file will need to be manually generated.
+The Sarek-generated CSV file is stored under `results/csv/mapped.csv` if in a previous run `--save_mapped` was set and will automatically be used as an input when specifying the parameter `--step markduplicates`. Otherwise this file will need to be manually generated.
 
 #### Full samplesheet
 
@@ -284,7 +318,7 @@ test,sample4_vs_sample3,manta,sample4_vs_sample3.somatic_sv.vcf.gz
 
 ## Updating the pipeline
 
-When you run the above command, Nextflow automatically pulls the pipeline code from GitHub and stores it as a cached version. When running the pipeline after this, it will always use the cached version if available - even if the pipeline has been updated since. To make sure that you're running the latest version of the pipeline, make sure that you regularly update the cached version of the pipeline:
+When you launch a pipeline from the command-line with `nextflow run nf-core/sarek -params-file params.yaml`, Nextflow will automatically pull the pipeline code from GitHub and store it as a cached version. When running the pipeline after this, it will always use the cached version if available - even if the pipeline has been updated since. To make sure that you're running the latest version of the pipeline, make sure that you regularly update the cached version of the pipeline:
 
 ```bash
 nextflow pull nf-core/sarek
@@ -294,23 +328,33 @@ nextflow pull nf-core/sarek
 
 It is a good idea to specify a pipeline version when running the pipeline on your data. This ensures that a specific version of the pipeline code and software are used when you run your pipeline. If you keep using the same tag, you'll be running the same version of the pipeline, even if there have been changes to the code since.
 
-First, go to the [nf-core/sarek releases page](https://github.com/nf-core/sarek/releases) and find the latest version number - numeric only (eg. `3.0.1`).
-Then specify this when running the pipeline with `-r` (one hyphen) - eg. `-r 3.0.1`.
+First, go to the [nf-core/sarek releases page](https://github.com/nf-core/sarek/releases) and find the latest version number - numeric only (eg. `3.3.2`).
+Then specify this when running the pipeline with `-r` (one hyphen) - eg. `-r 3.3.2`. Of course, you can switch to another version by changing the number after the `-r` flag.
 
-This version number will be logged in reports when you run the pipeline, so that you'll know what you used when you look back in the future.
+This version number will be logged in reports when you run the pipeline, so that you'll know what you used when you look back in the future. For example, at the bottom of the MultiQC reports.
+
+To further assist in reproducbility, you can use share and re-use [parameter files](#running-the-pipeline) to repeat pipeline runs with the same settings without having to write out a command with every single parameter.
+
+:::tip
+If you wish to share such profile (such as upload as supplementary material for academic publications), make sure to NOT include cluster specific paths to files, nor institutional specific profiles.
+:::
 
 # Core Nextflow arguments
 
-> **NB:** These options are part of Nextflow and use a _single_ hyphen (pipeline parameters use a double-hyphen).
+:::note
+These options are part of Nextflow and use a _single_ hyphen (pipeline parameters use a double-hyphen).
+:::
 
 ## `-profile`
 
 Use this parameter to choose a configuration profile.
 Profiles can give configuration presets for different compute environments.
 
-Several generic profiles are bundled with the pipeline which instruct the pipeline to use software packaged using different methods (Docker, Singularity, Podman, Shifter, Charliecloud, Conda) - see below. When using Biocontainers, most of these software packaging methods pull Docker containers from quay.io e.g [FastQC](https://quay.io/repository/biocontainers/fastqc) except for Singularity which directly downloads Singularity images via https hosted by the [Galaxy project](https://depot.galaxyproject.org/singularity/) and Conda which downloads and installs software locally from [Bioconda](https://bioconda.github.io/).
+Several generic profiles are bundled with the pipeline which instruct the pipeline to use software packaged using different methods (Docker, Singularity, Podman, Shifter, Charliecloud, Apptainer, Conda) - see below.
 
-> We highly recommend the use of `Docker` or `Singularity` containers for full pipeline reproducibility, however when this is not possible, `Conda` is also supported.
+:::info
+We highly recommend the use of Docker or Singularity containers for full pipeline reproducibility, however when this is not possible, Conda is also supported.
+:::
 
 The pipeline also dynamically loads configurations from [github.com/nf-core/configs](https://github.com/nf-core/configs) when it runs, making multiple config profiles for various institutional clusters available at run time.
 For more information and to see if your system is available in these configs please see the [nf-core/configs documentation](https://github.com/nf-core/configs#documentation).
@@ -318,9 +362,11 @@ For more information and to see if your system is available in these configs ple
 Note that multiple profiles can be loaded, for example: `-profile test,docker` - the order of arguments is important!
 They are loaded in sequence, so later profiles can overwrite earlier profiles.
 
-If `-profile` is not specified, the pipeline will run locally and expect all software to be installed and available on the `PATH`.
-This is _not_ recommended.
+If `-profile` is not specified, the pipeline will run locally and expect all software to be installed and available on the `PATH`. This is _not_ recommended, since it can lead to different results on different machines dependent on the computer enviroment.
 
+- `test`
+  - A profile with a complete configuration for automated testing
+  - Includes links to test data so needs no other parameters
 - `docker`
   - A generic configuration profile to be used with [Docker](https://docker.com/)
 - `singularity`
@@ -331,11 +377,10 @@ This is _not_ recommended.
   - A generic configuration profile to be used with [Shifter](https://nersc.gitlab.io/development/shifter/how-to-use/)
 - `charliecloud`
   - A generic configuration profile to be used with [Charliecloud](https://hpc.github.io/charliecloud/)
+- `apptainer`
+  - A generic configuration profile to be used with [Apptainer](https://apptainer.org/)
 - `conda`
-  - A generic configuration profile to be used with [Conda](https://conda.io/docs/). Please only use Conda as a last resort i.e. when it's not possible to run the pipeline with Docker, Singularity, Podman, Shifter or Charliecloud.
-- `test`
-  - A profile with a complete configuration for automated testing
-  - Includes links to test data so needs no other parameters
+  - A generic configuration profile to be used with [Conda](https://conda.io/docs/). Please only use Conda as a last resort i.e. when it's not possible to run the pipeline with Docker, Singularity, Podman, Shifter, Charliecloud, or Apptainer.
 
 ## `-resume`
 
@@ -371,96 +416,19 @@ Some HPC setups also allow you to run nextflow within a cluster job submitted yo
 
 Whilst the default requirements set within the pipeline will hopefully work for most people and with most input data, you may find that you want to customise the compute resources that the pipeline requests. Each step in the pipeline has a default set of requirements for number of CPUs, memory and time. For most of the steps in the pipeline, if the job exits with any of the error codes specified [here](https://github.com/nf-core/rnaseq/blob/4c27ef5610c87db00c3c5a3eed10b1d161abf575/conf/base.config#L18) it will automatically be resubmitted with higher requests (2 x original, then 3 x original). If it still fails after the third attempt then the pipeline execution is stopped.
 
-For example, if the nf-core/rnaseq pipeline is failing after multiple re-submissions of the `STAR_ALIGN` process due to an exit code of `137` this would indicate that there is an out of memory issue:
+To change the resource requests, please see the [max resources](https://nf-co.re/docs/usage/configuration#max-resources) and [tuning workflow resources](https://nf-co.re/docs/usage/configuration#tuning-workflow-resources) section of the nf-core website.
 
-```bash
-[62/149eb0] NOTE: Process `NFCORE_RNASEQ:RNASEQ:ALIGN_STAR:STAR_ALIGN (WT_REP1)` terminated with an error exit status (137) -- Execution is retried (1)
-Error executing process > 'NFCORE_RNASEQ:RNASEQ:ALIGN_STAR:STAR_ALIGN (WT_REP1)'
+### Custom Containers
 
-Caused by:
-    Process `NFCORE_RNASEQ:RNASEQ:ALIGN_STAR:STAR_ALIGN (WT_REP1)` terminated with an error exit status (137)
+In some cases you may wish to change which container or conda environment a step of the pipeline uses for a particular tool. By default nf-core pipelines use containers and software from the [biocontainers](https://biocontainers.pro/) or [bioconda](https://bioconda.github.io/) projects. However in some cases the pipeline specified version maybe out of date.
 
-Command executed:
-    STAR \
-        --genomeDir star \
-        --readFilesIn WT_REP1_trimmed.fq.gz  \
-        --runThreadN 2 \
-        --outFileNamePrefix WT_REP1. \
-        <TRUNCATED>
+To use a different container from the default container or conda environment specified in a pipeline, please see the [updating tool versions](https://nf-co.re/docs/usage/configuration#updating-tool-versions) section of the nf-core website.
 
-Command exit status:
-    137
+### Custom Tool Arguments
 
-Command output:
-    (empty)
+A pipeline might not always support every possible argument or option of a particular tool used in pipeline. Fortunately, nf-core pipelines provide some freedom to users to insert additional parameters that the pipeline does not include by default.
 
-Command error:
-    .command.sh: line 9:  30 Killed    STAR --genomeDir star --readFilesIn WT_REP1_trimmed.fq.gz --runThreadN 2 --outFileNamePrefix WT_REP1. <TRUNCATED>
-Work dir:
-    /home/pipelinetest/work/9d/172ca5881234073e8d76f2a19c88fb
-
-Tip: you can replicate the issue by changing to the process work dir and entering the command `bash .command.run`
-```
-
-To bypass this error you would need to find exactly which resources are set by the `STAR_ALIGN` process. The quickest way is to search for `process STAR_ALIGN` in the [nf-core/rnaseq Github repo](https://github.com/nf-core/rnaseq/search?q=process+STAR_ALIGN).
-We have standardised the structure of Nextflow DSL2 pipelines such that all module files will be present in the `modules/` directory and so, based on the search results, the file we want is `modules/nf-core/software/star/align/main.nf`.
-If you click on the link to that file you will notice that there is a `label` directive at the top of the module that is set to [`label process_high`](https://github.com/nf-core/rnaseq/blob/4c27ef5610c87db00c3c5a3eed10b1d161abf575/modules/nf-core/software/star/align/main.nf#L9).
-The [Nextflow `label`](https://www.nextflow.io/docs/latest/process.html#label) directive allows us to organise workflow processes in separate groups which can be referenced in a configuration file to select and configure subset of processes having similar computing requirements.
-The default values for the `process_high` label are set in the pipeline's [`base.config`](https://github.com/nf-core/rnaseq/blob/4c27ef5610c87db00c3c5a3eed10b1d161abf575/conf/base.config#L33-L37) which in this case is defined as 72GB.
-Providing you haven't set any other standard nf-core parameters to **cap** the [maximum resources](https://nf-co.re/usage/configuration#max-resources) used by the pipeline then we can try and bypass the `STAR_ALIGN` process failure by creating a custom config file that sets at least 72GB of memory, in this case increased to 100GB.
-The custom config below can then be provided to the pipeline via the [`-c`](#-c) parameter as highlighted in previous sections.
-
-```nextflow
-process {
-    withName: 'NFCORE_RNASEQ:RNASEQ:ALIGN_STAR:STAR_ALIGN' {
-        memory = 100.GB
-    }
-}
-```
-
-> **NB:** We specify the full process name i.e. `NFCORE_RNASEQ:RNASEQ:ALIGN_STAR:STAR_ALIGN` in the config file because this takes priority over the short name (`STAR_ALIGN`) and allows existing configuration using the full process name to be correctly overridden.
->
-> If you get a warning suggesting that the process selector isn't recognised check that the process name has been specified correctly.
-
-## Updating containers
-
-The [Nextflow DSL2](https://www.nextflow.io/docs/latest/dsl2.html) implementation of this pipeline uses one container per process which makes it much easier to maintain and update software dependencies. If for some reason you need to use a different version of a particular tool with the pipeline then you just need to identify the `process` name and override the Nextflow `container` definition for that process using the `withName` declaration. For example, in the [nf-core/viralrecon](https://nf-co.re/viralrecon) pipeline a tool called [Pangolin](https://github.com/cov-lineages/pangolin) has been used during the COVID-19 pandemic to assign lineages to SARS-CoV-2 genome sequenced samples. Given that the lineage assignments change quite frequently it doesn't make sense to re-release the nf-core/viralrecon everytime a new version of Pangolin has been released. However, you can override the default container used by the pipeline by creating a custom config file and passing it as a command-line argument via `-c custom.config`.
-
-1. Check the default version used by the pipeline in the module file for [Pangolin](https://github.com/nf-core/viralrecon/blob/a85d5969f9025409e3618d6c280ef15ce417df65/modules/nf-core/software/pangolin/main.nf#L14-L19)
-2. Find the latest version of the Biocontainer available on [Quay.io](https://quay.io/repository/biocontainers/pangolin?tag=latest&tab=tags)
-3. Create the custom config accordingly:
-
-   - For Docker:
-
-     ```nextflow
-     process {
-         withName: PANGOLIN {
-             container = 'quay.io/biocontainers/pangolin:3.0.5--pyhdfd78af_0'
-         }
-     }
-     ```
-
-   - For Singularity:
-
-     ```nextflow
-     process {
-         withName: PANGOLIN {
-             container = 'https://depot.galaxyproject.org/singularity/pangolin:3.0.5--pyhdfd78af_0'
-         }
-     }
-     ```
-
-   - For Conda:
-
-     ```nextflow
-     process {
-         withName: PANGOLIN {
-             conda = 'bioconda::pangolin=3.0.5'
-         }
-     }
-     ```
-
-> **NB:** If you wish to periodically update individual tool-specific results (e.g. Pangolin) generated by the pipeline then you must ensure to keep the `work/` directory otherwise the `-resume` ability of the pipeline will be compromised and it will restart from scratch.
+To learn how to provide additional arguments to a particular tool of the pipeline, please see the [customising tool arguments](https://nf-co.re/docs/usage/configuration#customising-tool-arguments) section of the nf-core website.
 
 ## nf-core/configs
 
@@ -473,7 +441,7 @@ If you have any questions or issues please send us a message on [Slack](https://
 ## Azure Resource Requests
 
 To be used with the `azurebatch` profile by specifying the `-profile azurebatch`.
-We recomend providing a compute `params.vm_type` of `Standard_E64_v3` VMs by default but these options can be changed if required.
+We recommend providing a compute `params.vm_type` of `Standard_D16_v3` VMs by default but these options can be changed if required.
 
 Note that the choice of VM size depends on your quota and the overall workload during the analysis.
 For a thorough list, please refer the [Azure Sizes for virtual machines in Azure](https://docs.microsoft.com/en-us/azure/virtual-machines/sizes).
@@ -482,95 +450,108 @@ For a thorough list, please refer the [Azure Sizes for virtual machines in Azure
 
 ## How to test the pipeline
 
-When using default parameters only, sarek runs preprocessing and `Strelka2`. This is reflected in the default test profile:
+When using default parameters only, sarek runs preprocessing and `Strelka2`.
+This is reflected in the default test profile:
 
 ```bash
-nextflow run nf-core/sarek -r 3.0.1 -profile test,<container/institute>
+nextflow run nf-core/sarek -profile test,<container/institute> --outdir results
 ```
 
 Expected run output:
 
-```
-[42/360944] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:BWAMEM1_INDEX (genome.fasta)                        [100%] 1 of 1 ✔
-[-        ] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:BWAMEM2_INDEX                                       -
-[-        ] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:DRAGMAP_HASHTABLE                                   -
-[2b/92dc0c] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:GATK4_CREATESEQUENCEDICTIONARY (genome.fasta)       [100%] 1 of 1 ✔
-[-        ] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:MSISENSORPRO_SCAN                                   -
-[58/ecea17] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:SAMTOOLS_FAIDX (genome.fasta)                       [100%] 1 of 1 ✔
-[9c/121939] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:TABIX_DBSNP (dbsnp_146.hg38.vcf)                    [100%] 1 of 1 ✔
-[-        ] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:TABIX_GERMLINE_RESOURCE                             -
-[-        ] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:TABIX_KNOWN_SNPS                                    -
-[28/6f5c14] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:TABIX_KNOWN_INDELS (mills_and_1000G.indels.vcf)     [100%] 1 of 1 ✔
-[-        ] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:TABIX_PON                                           -
-[55/4466e1] process > NFCORE_SAREK:SAREK:PREPARE_INTERVALS:CREATE_INTERVALS_BED (genome.interval_list)      [100%] 1 of 1 ✔
-[f8/df9607] process > NFCORE_SAREK:SAREK:PREPARE_INTERVALS:GATK4_INTERVALLISTTOBED (genome)                 [100%] 1 of 1 ✔
-[ff/26467d] process > NFCORE_SAREK:SAREK:PREPARE_INTERVALS:TABIX_BGZIPTABIX_INTERVAL_SPLIT (chr22_1-40001)  [100%] 1 of 1 ✔
-[-        ] process > NFCORE_SAREK:SAREK:PREPARE_CNVKIT_REFERENCE:CNVKIT_ANTITARGET                         -
-[-        ] process > NFCORE_SAREK:SAREK:PREPARE_CNVKIT_REFERENCE:CNVKIT_REFERENCE                          -
-[-        ] process > NFCORE_SAREK:SAREK:ALIGNMENT_TO_FASTQ_INPUT:SAMTOOLS_VIEW_MAP_MAP                     -
-[-        ] process > NFCORE_SAREK:SAREK:ALIGNMENT_TO_FASTQ_INPUT:SAMTOOLS_VIEW_UNMAP_UNMAP                 -
-[-        ] process > NFCORE_SAREK:SAREK:ALIGNMENT_TO_FASTQ_INPUT:SAMTOOLS_VIEW_UNMAP_MAP                   -
-[-        ] process > NFCORE_SAREK:SAREK:ALIGNMENT_TO_FASTQ_INPUT:SAMTOOLS_VIEW_MAP_UNMAP                   -
-[-        ] process > NFCORE_SAREK:SAREK:ALIGNMENT_TO_FASTQ_INPUT:SAMTOOLS_MERGE_UNMAP                      -
-[-        ] process > NFCORE_SAREK:SAREK:ALIGNMENT_TO_FASTQ_INPUT:COLLATE_FASTQ_UNMAP                       -
-[-        ] process > NFCORE_SAREK:SAREK:ALIGNMENT_TO_FASTQ_INPUT:COLLATE_FASTQ_MAP                         -
-[-        ] process > NFCORE_SAREK:SAREK:ALIGNMENT_TO_FASTQ_INPUT:CAT_FASTQ                                 -
-[74/cd6685] process > NFCORE_SAREK:SAREK:RUN_FASTQC:FASTQC (test-test_L1)                                   [100%] 1 of 1 ✔
-[bc/ea89a8] process > NFCORE_SAREK:SAREK:GATK4_MAPPING:BWAMEM1_MEM (test)                                   [100%] 1 of 1 ✔
-[-        ] process > NFCORE_SAREK:SAREK:GATK4_MAPPING:BWAMEM2_MEM                                          -
-[-        ] process > NFCORE_SAREK:SAREK:GATK4_MAPPING:DRAGMAP_ALIGN                                        -
-[46/35a640] process > NFCORE_SAREK:SAREK:MARKDUPLICATES:GATK4_MARKDUPLICATES (test)                         [100%] 1 of 1 ✔
-[e0/525bb3] process > NFCORE_SAREK:SAREK:MARKDUPLICATES:BAM_TO_CRAM:SAMTOOLS_BAMTOCRAM (test)               [100%] 1 of 1 ✔
-[46/9fe93a] process > NFCORE_SAREK:SAREK:MARKDUPLICATES:BAM_TO_CRAM:SAMTOOLS_STATS_CRAM (test)              [100%] 1 of 1 ✔
-[77/2c8b1b] process > NFCORE_SAREK:SAREK:MARKDUPLICATES:BAM_TO_CRAM:MOSDEPTH (test)                         [100%] 1 of 1 ✔
-[f7/499800] process > NFCORE_SAREK:SAREK:PREPARE_RECALIBRATION:BASERECALIBRATOR (test)                      [100%] 1 of 1 ✔
-[-        ] process > NFCORE_SAREK:SAREK:PREPARE_RECALIBRATION:GATHERBQSRREPORTS                            -
-[9d/3d1fff] process > NFCORE_SAREK:SAREK:RECALIBRATE:APPLYBQSR (test)                                       [100%] 1 of 1 ✔
-[-        ] process > NFCORE_SAREK:SAREK:RECALIBRATE:MERGE_INDEX_CRAM:MERGE_CRAM                            -
-[cb/fa9dcb] process > NFCORE_SAREK:SAREK:RECALIBRATE:MERGE_INDEX_CRAM:INDEX_CRAM (test)                     [100%] 1 of 1 ✔
-[19/f075fb] process > NFCORE_SAREK:SAREK:CRAM_QC:SAMTOOLS_STATS (test)                                      [100%] 1 of 1 ✔
-[a9/aca71f] process > NFCORE_SAREK:SAREK:CRAM_QC:MOSDEPTH (test)                                            [100%] 1 of 1 ✔
-[-        ] process > NFCORE_SAREK:SAREK:SAMTOOLS_CRAMTOBAM_RECAL                                           -
-[14/cb7738] process > NFCORE_SAREK:SAREK:GERMLINE_VARIANT_CALLING:RUN_STRELKA_SINGLE:STRELKA_SINGLE (test)  [100%] 1 of 1 ✔
-[-        ] process > NFCORE_SAREK:SAREK:GERMLINE_VARIANT_CALLING:RUN_STRELKA_SINGLE:MERGE_STRELKA          -
-[-        ] process > NFCORE_SAREK:SAREK:GERMLINE_VARIANT_CALLING:RUN_STRELKA_SINGLE:MERGE_STRELKA_GENOME   -
-[-        ] process > NFCORE_SAREK:SAREK:TUMOR_ONLY_VARIANT_CALLING:RUN_STRELKA_SINGLE:STRELKA_SINGLE       -
-[-        ] process > NFCORE_SAREK:SAREK:TUMOR_ONLY_VARIANT_CALLING:RUN_STRELKA_SINGLE:MERGE_STRELKA        -
-[-        ] process > NFCORE_SAREK:SAREK:TUMOR_ONLY_VARIANT_CALLING:RUN_STRELKA_SINGLE:MERGE_STRELKA_GENOME -
-[-        ] process > NFCORE_SAREK:SAREK:PAIR_VARIANT_CALLING:RUN_STRELKA_SOMATIC:STRELKA_SOMATIC           -
-[-        ] process > NFCORE_SAREK:SAREK:PAIR_VARIANT_CALLING:RUN_STRELKA_SOMATIC:MERGE_STRELKA_SNVS        -
-[-        ] process > NFCORE_SAREK:SAREK:PAIR_VARIANT_CALLING:RUN_STRELKA_SOMATIC:MERGE_STRELKA_INDELS      -
-[3f/68d214] process > NFCORE_SAREK:SAREK:VCF_QC:BCFTOOLS_STATS (test)                                       [100%] 1 of 1 ✔
-[7e/435083] process > NFCORE_SAREK:SAREK:VCF_QC:VCFTOOLS_TSTV_COUNT (test)                                  [100%] 1 of 1 ✔
-[a2/a0c127] process > NFCORE_SAREK:SAREK:VCF_QC:VCFTOOLS_TSTV_QUAL (test)                                   [100%] 1 of 1 ✔
-[98/180e11] process > NFCORE_SAREK:SAREK:VCF_QC:VCFTOOLS_SUMMARY (test)                                     [100%] 1 of 1 ✔
-[40/7f3d8a] process > NFCORE_SAREK:SAREK:CUSTOM_DUMPSOFTWAREVERSIONS (1)                                    [100%] 1 of 1 ✔
-[fa/f4933d] process > NFCORE_SAREK:SAREK:MULTIQC                                                            [100%] 1 of 1 ✔
+```bash
+[85/6b7739] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:BWAMEM1_INDEX (genome.fasta)                                                [100%] 1 of 1 ✔
+[-        ] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:BWAMEM2_INDEX                                                               -
+[-        ] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:DRAGMAP_HASHTABLE                                                           -
+[22/cf54a8] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:GATK4_CREATESEQUENCEDICTIONARY (genome.fasta)                               [100%] 1 of 1 ✔
+[-        ] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:MSISENSORPRO_SCAN                                                           -
+[28/dad25a] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:SAMTOOLS_FAIDX (genome.fasta)                                               [100%] 1 of 1 ✔
+[23/3fe964] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:TABIX_DBSNP (dbsnp_146.hg38.vcf)                                            [100%] 1 of 1 ✔
+[-        ] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:TABIX_GERMLINE_RESOURCE                                                     -
+[-        ] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:TABIX_KNOWN_SNPS                                                            -
+[14/26e286] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:TABIX_KNOWN_INDELS (mills_and_1000G.indels.vcf)                             [100%] 1 of 1 ✔
+[-        ] process > NFCORE_SAREK:SAREK:PREPARE_GENOME:TABIX_PON                                                                   -
+[76/04d107] process > NFCORE_SAREK:SAREK:PREPARE_INTERVALS:CREATE_INTERVALS_BED (genome.interval_list)                              [100%] 1 of 1 ✔
+[d4/f97174] process > NFCORE_SAREK:SAREK:PREPARE_INTERVALS:GATK4_INTERVALLISTTOBED (genome)                                         [100%] 1 of 1 ✔
+[70/82ba3c] process > NFCORE_SAREK:SAREK:PREPARE_INTERVALS:TABIX_BGZIPTABIX_INTERVAL_SPLIT (chr22_1-40001)                          [100%] 1 of 1 ✔
+[d4/c2d0c4] process > NFCORE_SAREK:SAREK:PREPARE_INTERVALS:TABIX_BGZIPTABIX_INTERVAL_COMBINED (genome)                              [100%] 1 of 1 ✔
+[-        ] process > NFCORE_SAREK:SAREK:CONVERT_FASTQ_INPUT:SAMTOOLS_VIEW_MAP_MAP                                                  -
+[-        ] process > NFCORE_SAREK:SAREK:CONVERT_FASTQ_INPUT:SAMTOOLS_VIEW_UNMAP_UNMAP                                              -
+[-        ] process > NFCORE_SAREK:SAREK:CONVERT_FASTQ_INPUT:SAMTOOLS_VIEW_UNMAP_MAP                                                -
+[-        ] process > NFCORE_SAREK:SAREK:CONVERT_FASTQ_INPUT:SAMTOOLS_VIEW_MAP_UNMAP                                                -
+[-        ] process > NFCORE_SAREK:SAREK:CONVERT_FASTQ_INPUT:SAMTOOLS_MERGE_UNMAP                                                   -
+[-        ] process > NFCORE_SAREK:SAREK:CONVERT_FASTQ_INPUT:COLLATE_FASTQ_UNMAP                                                    -
+[-        ] process > NFCORE_SAREK:SAREK:CONVERT_FASTQ_INPUT:COLLATE_FASTQ_MAP                                                      -
+[-        ] process > NFCORE_SAREK:SAREK:CONVERT_FASTQ_INPUT:CAT_FASTQ                                                              -
+[c4/f59e5a] process > NFCORE_SAREK:SAREK:FASTQC (test-test_L1)                                                                      [100%] 1 of 1 ✔
+[0b/c5a999] process > NFCORE_SAREK:SAREK:FASTQ_ALIGN_BWAMEM_MEM2_DRAGMAP:BWAMEM1_MEM (test)                                         [100%] 1 of 1 ✔
+[-        ] process > NFCORE_SAREK:SAREK:FASTQ_ALIGN_BWAMEM_MEM2_DRAGMAP:BWAMEM2_MEM                                                -
+[-        ] process > NFCORE_SAREK:SAREK:FASTQ_ALIGN_BWAMEM_MEM2_DRAGMAP:DRAGMAP_ALIGN                                              -
+[c7/664cd1] process > NFCORE_SAREK:SAREK:BAM_MARKDUPLICATES:GATK4_MARKDUPLICATES (test)                                             [100%] 1 of 1 ✔
+[13/bc73b6] process > NFCORE_SAREK:SAREK:BAM_MARKDUPLICATES:INDEX_MARKDUPLICATES (test)                                             [100%] 1 of 1 ✔
+[2a/99608e] process > NFCORE_SAREK:SAREK:BAM_MARKDUPLICATES:CRAM_QC_MOSDEPTH_SAMTOOLS:SAMTOOLS_STATS (test)                         [100%] 1 of 1 ✔
+[f2/0420ca] process > NFCORE_SAREK:SAREK:BAM_MARKDUPLICATES:CRAM_QC_MOSDEPTH_SAMTOOLS:MOSDEPTH (test)                               [100%] 1 of 1 ✔
+[-        ] process > NFCORE_SAREK:SAREK:CRAM_TO_BAM                                                                                -
+[eb/46945a] process > NFCORE_SAREK:SAREK:BAM_BASERECALIBRATOR:GATK4_BASERECALIBRATOR (test)                                         [100%] 1 of 1 ✔
+[-        ] process > NFCORE_SAREK:SAREK:BAM_BASERECALIBRATOR:GATK4_GATHERBQSRREPORTS                                               -
+[ec/2377d4] process > NFCORE_SAREK:SAREK:BAM_APPLYBQSR:GATK4_APPLYBQSR (test)                                                       [100%] 1 of 1 ✔
+[-        ] process > NFCORE_SAREK:SAREK:BAM_APPLYBQSR:CRAM_MERGE_INDEX_SAMTOOLS:MERGE_CRAM                                         -
+[88/3af664] process > NFCORE_SAREK:SAREK:BAM_APPLYBQSR:CRAM_MERGE_INDEX_SAMTOOLS:INDEX_CRAM (test)                                  [100%] 1 of 1 ✔
+[f4/828fde] process > NFCORE_SAREK:SAREK:CRAM_QC_RECAL:SAMTOOLS_STATS (test)                                                        [100%] 1 of 1 ✔
+[fb/a9d66f] process > NFCORE_SAREK:SAREK:CRAM_QC_RECAL:MOSDEPTH (test)                                                              [100%] 1 of 1 ✔
+[-        ] process > NFCORE_SAREK:SAREK:CRAM_TO_BAM_RECAL                                                                          -
+[ef/026185] process > NFCORE_SAREK:SAREK:BAM_VARIANT_CALLING_GERMLINE_ALL:BAM_VARIANT_CALLING_SINGLE_STRELKA:STRELKA_SINGLE (test)  [100%] 1 of 1 ✔
+[-        ] process > NFCORE_SAREK:SAREK:BAM_VARIANT_CALLING_GERMLINE_ALL:BAM_VARIANT_CALLING_SINGLE_STRELKA:MERGE_STRELKA          -
+[-        ] process > NFCORE_SAREK:SAREK:BAM_VARIANT_CALLING_GERMLINE_ALL:BAM_VARIANT_CALLING_SINGLE_STRELKA:MERGE_STRELKA_GENOME   -
+[-        ] process > NFCORE_SAREK:SAREK:BAM_VARIANT_CALLING_TUMOR_ONLY_ALL:BAM_VARIANT_CALLING_SINGLE_STRELKA:STRELKA_SINGLE       -
+[-        ] process > NFCORE_SAREK:SAREK:BAM_VARIANT_CALLING_TUMOR_ONLY_ALL:BAM_VARIANT_CALLING_SINGLE_STRELKA:MERGE_STRELKA        -
+[-        ] process > NFCORE_SAREK:SAREK:BAM_VARIANT_CALLING_TUMOR_ONLY_ALL:BAM_VARIANT_CALLING_SINGLE_STRELKA:MERGE_STRELKA_GENOME -
+[-        ] process > NFCORE_SAREK:SAREK:BAM_VARIANT_CALLING_SOMATIC_ALL:BAM_VARIANT_CALLING_SOMATIC_STRELKA:STRELKA_SOMATIC        -
+[-        ] process > NFCORE_SAREK:SAREK:BAM_VARIANT_CALLING_SOMATIC_ALL:BAM_VARIANT_CALLING_SOMATIC_STRELKA:MERGE_STRELKA_INDELS   -
+[-        ] process > NFCORE_SAREK:SAREK:BAM_VARIANT_CALLING_SOMATIC_ALL:BAM_VARIANT_CALLING_SOMATIC_STRELKA:MERGE_STRELKA_SNVS     -
+[bc/f3f5cf] process > NFCORE_SAREK:SAREK:VCF_QC_BCFTOOLS_VCFTOOLS:BCFTOOLS_STATS (test)                                             [100%] 1 of 1 ✔
+[21/8d4f02] process > NFCORE_SAREK:SAREK:VCF_QC_BCFTOOLS_VCFTOOLS:VCFTOOLS_TSTV_COUNT (test)                                        [100%] 1 of 1 ✔
+[36/957fba] process > NFCORE_SAREK:SAREK:VCF_QC_BCFTOOLS_VCFTOOLS:VCFTOOLS_TSTV_QUAL (test)                                         [100%] 1 of 1 ✔
+[70/a8e064] process > NFCORE_SAREK:SAREK:VCF_QC_BCFTOOLS_VCFTOOLS:VCFTOOLS_SUMMARY (test)                                           [100%] 1 of 1 ✔
+[36/e35b1b] process > NFCORE_SAREK:SAREK:CUSTOM_DUMPSOFTWAREVERSIONS (1)                                                            [100%] 1 of 1 ✔
+[3f/3c3356] process > NFCORE_SAREK:SAREK:MULTIQC                                                                                    [100%] 1 of 1 ✔
+-[nf-core/sarek] Pipeline completed successfully-
+Completed at: 09-Jun-2023 13:46:31
+Duration    : 1m 50s
+CPU hours   : (a few seconds)
+Succeeded   : 27
 ```
 
 The pipeline comes with a number of possible paths and tools that can be used.
 
-Due to the small test data size, unfortunately not everything can be tested from top-to-bottom, but often is done by utilizing the pipeline's `--step` parameter. Annotation has to tested separatly from the remaining workflow, since we use references for `C.elegans`, while the remaining tests are run on downsampled human data.
+Due to the small test data size, unfortunately not everything can be tested from top-to-bottom, but often is done by utilizing the pipeline's `--step` parameter.
+
+For more extensive testing purpose, we have the `test_cache` profile that contain the same data, but on which the path to the reference and input files can be changed using the `--test_data_base` params.
+
+Annotation is generally tested separately from the remaining workflow, since we use references for `C.elegans`, while the remaining tests are run on downsampled human data.
 
 ```bash
-nextflow run nf-core/sarek -r 3.0.1 -profile test,<container/institute> --tools snpeff --step annotation
+nextflow run nf-core/sarek -profile test_cache,<container/institute> --outdir results --tools snpeff --step annotation
 ```
 
-If you are interested in any of the other tests that are run on every code change or would like to run them yourself, you can take a look at `tests/<filename>.yml`. For each entry the respective nextflow command run and the expected output is specified.
+If you are interested in any of the other tests that are run on every code change or would like to run them yourself, you can take a look at `tests/<filename>.yml`.
+For each entry the respective nextflow command run and the expected output is specified.
 
 Some of the currently, available test profiles:
 
-| Test profile    | Run command                                                                     |
-| :-------------- | :------------------------------------------------------------------------------ |
-| annotation      | `nextflow run main.nf -profile test,annotation,docker --tools snpeff,vep,merge` |
-| no_intervals    | `nextflow run main.nf -profile test,no_intervals,docker`                        |
-| targeted        | `nextflow run main.nf -profile test,targeted,docker`                            |
-| tools_germline  | `nextflow run main.nf -profile test,tools_germline,docker --tools strelka`      |
-| tools_tumoronly | `nextflow run main.nf -profile test,tools_tumoronly,docker --tools strelka`     |
-| tools_somatic   | `nextflow run main.nf -profile test,tools_somatic,docker --tools strelka`       |
-| trimming        | `nextflow run main.nf -profile test,trim_fastq,docker`                          |
-| umi             | `nextflow run main.nf -profile test,umi,docker`                                 |
-| use_gatk_spark  | `nextflow run main.nf -profile test,use_gatk_spark,docker`                      |
+| Test profile    | Run command                                                                           |
+| :-------------- | :------------------------------------------------------------------------------------ |
+| annotation      | `nextflow run main.nf -profile test_cache,annotation,docker --tools snpeff,vep,merge` |
+| no_intervals    | `nextflow run main.nf -profile test_cache,no_intervals,docker`                        |
+| targeted        | `nextflow run main.nf -profile test_cache,targeted,docker`                            |
+| tools_germline  | `nextflow run main.nf -profile test_cache,tools_germline,docker --tools strelka`      |
+| tools_tumoronly | `nextflow run main.nf -profile test_cache,tools_tumoronly,docker --tools strelka`     |
+| tools_somatic   | `nextflow run main.nf -profile test_cache,tools_somatic,docker --tools strelka`       |
+| trimming        | `nextflow run main.nf -profile test_cache,trim_fastq,docker`                          |
+| umi             | `nextflow run main.nf -profile test_cache,umi,docker`                                 |
+| use_gatk_spark  | `nextflow run main.nf -profile test_cache,use_gatk_spark,docker`                      |
+
+If you are interested in any of the other profiles that are used, you can take a look at `conf/test/<filename>.config`.
 
 ## How can the different steps be used
 
@@ -597,18 +578,119 @@ This list is by no means exhaustive and it will depend on the specific analysis 
 
 ## How to run ASCAT with whole-exome sequencing data?
 
-While the ASCAT implementation in sarek is capable of running with whole-exome sequencing data, the needed references are currently not provided with the igenomes.config. According to the [developers](https://github.com/VanLoo-lab/ascat/issues/97) of ASCAT, loci and allele files (one file per chromosome) can be downloaded directly from the [Battenberg repository](https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52).
-
-The GC correction file needs to be derived, so one has to concatenate all chromosomes into a single file and modify the header so it fits [this example](https://github.com/VanLoo-lab/ascat/tree/master/LogRcorrection#gc-correction-file-creation).
-
-The RT correction file is missing for hg38 but can be derived using [ASCAT scripts](https://github.com/VanLoo-lab/ascat/tree/master/LogRcorrection#replication-timing-correction-file-creation) for hg19. For hg38, one needs to lift-over hg38 to hg19, run the script on hg19 positions and set coordinates back to hg38.
+ASCAT runs out of the box on whole genome sequencing data using iGenomes resources. While the ASCAT implementation in sarek is capable of running with whole-exome sequencing data, the needed references are currently not provided with the igenomes.config. According to the [developers](https://github.com/VanLoo-lab/ascat/issues/97) of ASCAT, loci and allele files (one file per chromosome) can be downloaded directly from the [Battenberg repository](https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52).
 
 Please note that:
 
-Row names (for GC and RT correction files) should be `${chr}_${position}` (there is no SNP/probe ID for HTS data).
-ASCAT developers strongly recommend using a BED file for WES/TS data. This prevents considering SNPs covered by off-targeted reads that would add noise to log/BAF tracks.
+- Row names (for GC and RT correction files) should be `${chr}_${position}` (there is no SNP/probe ID for HTS data).
+- All row names in GC and RT correction files should also appear in the loci files
+- Loci and allele files must contain the same set of SNPs
+- ASCAT developers strongly recommend using a BED file for WES/TS data. This prevents considering SNPs covered by off-target reads that would add noise to log/BAF tracks.
+- The total number of GC correction loci in a sample must be at least 10% of the number of loci with logR values. If the number of GC correction loci is too small compared to the total number of loci, ASCAT will throw an error.
 
-## What are the bwa/bwa-mem2 parameters?
+From 'Reference files' https://github.com/VanLoo-lab/ascat:
+
+> For WES and targeted sequencing, we recommend using the reference files (loci, allele and logR correction files) as part of the Battenberg package. Because they require a high-resolution input, our reference files for WGS are not suitable for WES and targeted sequencing. For WES, loci and allele files from the Battenberg package can be fed into ascat.prepareHTS. For targeted sequencing, allele files from the Battenberg package can be fed into ascat.prepareTargetedSeq, which will generate cleaned loci and allele files that can be fed into ascat.prepareHTS.
+
+### How to generate ASCAT resources for exome or targeted sequencing
+
+1. Fetch the GC content correction and replication timing (RT) correction files from the [Dropbox links provided by the ASCAT developers](https://github.com/VanLoo-lab/ascat/tree/master/ReferenceFiles/WGS) and intersect the SNP coordinates with the exome target coordinates. If the target file has 'chr' prefixes, make a copy with these removed first. Extract the GC and RT information for only the on target SNPs and zip the results.
+
+```bash
+sed -e 's/chr//' targets_with_chr.bed > targets.bed
+
+for t in GC RT
+do
+  unzip ${t}_G1000_hg38.zip
+
+  cut -f 1-3 ${t}_G1000_hg38.txt > ascat_${t}_snps_hg38.txt
+  tail -n +2 ascat_${t}_snps_hg38.txt | awk '{ print $2 "\t" $3-1 "\t" $3 "\t" $1 }' > ascat_${t}_snps_hg38.bed
+  bedtools intersect -a ascat_${t}_snps_hg38.bed -b targets.bed | awk '{ print $1 "_" $3 }' > ascat_${t}_snps_on_target_hg38.txt
+
+  head -n 1 ${t}_G1000_hg38.txt > ${t}_G1000_on_target_hg38.txt
+  grep -f ascat_${t}_snps_on_target_hg38.txt ${t}_G1000_hg38.txt >> ${t}_G1000_on_target_hg38.txt
+  zip ${t}_G1000_on_target_hg38.zip ${t}_G1000_on_target_hg38.txt
+
+  rm ${t}_G1000_hg38.zip
+done
+```
+
+2. Download the Battenberg 1000G loci and alleles files. The steps below follow downloading from the [Battenberg repository at the Oxford University Research Archive](https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52). The files are also available via Dropbox links from the same page as the GC and RT correction files above.
+
+```bash
+wget https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/files/rt435gd52w
+mv rt345gd52w battenberg.zip
+tar xf battenberg.zip
+
+unzip 1000G_loci_hg38_chr.zip
+cd 1000G_loci_hg38
+mkdir battenberg_alleles_on_target_hg38
+mv *allele* battenberg_alleles_on_target_hg38/
+mkdir battenberg_loci_on_target_hg38
+mv *loci* battenberg_loci_on_target_hg38/
+```
+
+3. Copy the `targets_with_chr.bed` and `GC_G1000_on_target_hg38.txt` files into the newly created `battenberg_loci_on_target_hg38` folder before running the next set of steps. ASCAT generates a list of GC correction loci with sufficient coverage in a sample, then intersects that with the list of all loci with tumour logR values in that sample. If the intersection is <10% the size of the latter, it will fail with an error. Because the Battenberg loci/allele sets are very dense, subsetting to on-target regions is still too many loci. This script ensures that all SNPs with GC correction information are included in the loci list, plus a random sample of another 30% of all on target loci. You may need to vary this proportion depending on your set of targets. A good rule of thumb is that the size of your GC correction loci list should be about 15% the size of your total loci list. This allows for a margin of error.
+
+```bash
+cd battenberg_loci_on_target_hg38/
+rm *chrstring*
+rm 1kg.phase3.v5a_GRCh38nounref_loci_chr23.txt
+for i in {1..22} X
+do
+  awk '{ print $1 "\t" $2-1 "\t" $2 }' 1kg.phase3.v5a_GRCh38nounref_loci_chr${i}.txt > chr${i}.bed
+  grep "^${i}_" GC_G1000_on_target_hg38.txt | awk '{ print "chr" $1 }' > chr${i}.txt
+  bedtools intersect -a chr${i}.bed -b targets_with_chr.bed | awk '{ print $1 "_" $3 }' > chr${i}_on_target.txt
+  n=`wc -l chr${i}_on_target.txt | awk '{ print $1 }'`
+  count=$((n * 3 / 10))
+  grep -xf chr${i}.txt chr${i}_on_target.txt > chr${i}.temp
+  shuf -n $count chr${i}_on_target.txt >> chr${i}.temp
+  sort -n -k2 -t '_' chr${i}.temp | uniq | awk 'BEGIN { FS="_" } ; { print $1 "\t" $2 }' > battenberg_loci_on_target_hg38_chr${i}.txt
+done
+zip battenberg_loci_on_target_hg38.zip battenberg_loci_on_target_hg38_chr*.txt
+```
+
+4. Extract the alleles for the same set of SNPs. Uses a short R script defined below.
+
+```bash
+cd ../battenberg_alleles_on_target_hg38/
+rm 1kg.phase3.v5a_GRCh38nounref_allele_index_chr23.txt
+for i in {1..22} X
+do
+  Rscript intersect_ascat_alleles.R ../battenberg_loci_on_target_hg38/battenberg_loci_on_target_hg38_chr${i}.txt \
+    1kg.phase3.v5a_GRCh38nounref_allele_index_chr${i}.txt battenberg_alleles_on_target_hg38_chr${i}.txt
+done
+zip battenberg_alleles_on_target_hg38.zip battenberg_alleles_on_target_hg38_chr*.txt
+```
+
+Rscript `intersect_ascat_alleles.R`
+
+```bash
+#!/usr/bin/env Rscript
+
+args = commandArgs(trailingOnly=TRUE)
+
+loci = read.table(args[1], header=F, sep="\t", stringsAsFactors=F)
+alleles = read.table(args[2], header=T, sep="\t", stringsAsFactors=F)
+
+i = intersect(loci$V2, alleles$position)
+
+out = subset(alleles, alleles$position %in% i)
+write.table(out, args[3], col.names=T, row.names=F, quote=F, sep="\t")
+```
+
+5. Move or copy all of the zip files you've created to a suitable location. Specify these in your parameters, e.g.
+
+```json
+{
+  "ascat_alleles": "/path/to/battenberg_alleles_on_target_hg38.zip",
+  "ascat_loci": "/path/to/battenberg_loci_on_target_hg38.zip",
+  "ascat_loci_gc": "/path/to/GC_G1000_on_target_hg38.zip",
+  "ascat_loci_rt": "/path/to/RT_G1000_on_target_hg38.zip"
+}
+```
+
+## What are the bwa, bwa-mem2 and sentieon bwa mem parameters?
 
 For mapping, sarek follows the parameter suggestions provided in this [paper](https://www.nature.com/articles/s41467-018-06159-4):
 
@@ -617,6 +699,35 @@ For mapping, sarek follows the parameter suggestions provided in this [paper](ht
 `-Y`: force soft-clipping rather than default hard-clipping of supplementary alignments
 
 In addition, currently the mismatch penalty for reads with tumor status in the sample sheet are mapped with a mismatch penalty of `-B 3`.
+
+## How to manage scatter/gathering (parallelization with-in each sample)
+
+While Nextflow ensures all samples are run in parallel, the pipeline can split input files for each sample into smaller chunks which are processes in parallel.
+This speeds up analysis for individual chunks, but might occupy more storage space.
+
+Therefore, the different scatter/gather options can be set by the user:
+
+### Split Fastq files
+
+By default, the input fastq files are split into smaller chunks with FASTP, mapped in parallel, and then merged and duplicate marked. This can be customized by setting the parameter `--split_fastq`.
+This parameter determines how many reads are within each split. Setting it to `0` will turn of any splitting and only one mapping process is run per input fastq file.
+
+> FastP creates as many chunks as CPUs are specified (by default 12) and subdivides them further, if the number of reads in a chunk is larger then the value specified in `--split_fastq`. Thus, the parameter `--split_fastq` is an upper bound, e.g. if 1/12th of the Fastq file exceeds the provided value another fastq file will be generated.
+
+### Intervals for Base Quality Score Recalibration and Variantcalling
+
+The pipeline can parallelize base quality score recalibration and variant calling across genomic chunks of roughly similar sizes.
+For this, a bed file containing genomic regions of interest is used, it's the intervals file.
+By default, the intervals file for WGS used is the one provided by GATK (details [here](https://gatk.broadinstitute.org/hc/en-us/articles/360035889551-When-should-I-restrict-my-analysis-to-specific-intervals-)).
+When running targeted analysis, it is recommended to use the bed file containing the targeted regions.
+
+The amount of scatter/gathering can be customized by adjusting the parameter `--nucleotides_per_second`.
+
+> **NB:** The _same_ intervals are processed regardless of the number of groups. The number of groups however determines over how many compute nodes the analysis is scattered on.
+
+The default value is `200000`, increasing this value will _reduce_ the number of groups that are processed in parallel.
+Generally, smaller numbers of groups (each group has more regions), the slower the processing, and less storage space is consumed.
+In particular, in cloud computing setting it is often advisable to reduce the number of groups to be run in parallel to reduce data staging steps.
 
 ## How to create a panel-of-normals for Mutect2
 
@@ -657,10 +768,6 @@ OPTIONS=”—default-ulimit nofile=65535:65535"
 Re-start your session.
 
 Note that the way to increase the open file limit in your system may be slightly different or require additional steps.
-
-### Cannot delete work folder when using docker + Spark
-
-Currently, when running spark-based tools in combination with docker, it is required to set `docker.userEmulation = false`. This can unfortunately causes permission issues when `work/` is being written with root permissions. In case this happens, you might need to configure docker to run without `userEmulation` (see [here](https://github.com/Midnighter/nf-core-adr/blob/main/docs/adr/0008-refrain-from-using-docker-useremulation-in-nextflow.md)).
 
 ## How to handle UMIs
 
@@ -728,8 +835,8 @@ For GATK.GRCh38 the links for each reference file and the corresponding processe
 | dbsnp                 | Baserecalibrator, ControlFREEC, GenotypeGVCF, HaplotypeCaller                                                                                                                                                                                                                                                                                                                                                                                        | [GATKBundle](https://console.cloud.google.com/storage/browser/_details/genomics-public-data/resources/broad/hg38/v0/) | https://gatk.broadinstitute.org/hc/en-us/articles/360035890811-Resource-bundle       |
 | dbsnp_tbi             | Baserecalibrator, ControlFREEC, GenotypeGVCF, HaplotypeCaller                                                                                                                                                                                                                                                                                                                                                                                        | [GATKBundle](https://console.cloud.google.com/storage/browser/_details/genomics-public-data/resources/broad/hg38/v0/) |                                                                                      |
 | dict                  | Baserecalibrator(Spark), CNNScoreVariant, EstimateLibraryComplexity, FilterMutectCalls, FilterVariantTranches, GatherPileupSummaries,GenotypeGVCF, GetPileupSummaries, HaplotypeCaller, MarkDulpicates(Spark), MergeVCFs, Mutect2, Variantrecalibrator                                                                                                                                                                                               | [GATKBundle](https://console.cloud.google.com/storage/browser/_details/genomics-public-data/resources/broad/hg38/v0/) | https://gatk.broadinstitute.org/hc/en-us/articles/360035890811-Resource-bundle       |
-| fasta                 | ApplyBQSR(Spark), ApplyVQSR, ASCAT, Baserecalibrator(Spark), BWA, BWAMem2, CNNScoreVariant, CNVKit, ControlFREEC, DragMap, DEEPVariant, EnsemblVEP, EstimateLibraryComplexity, FilterMutectCalls, FilterVariantTranches, FreeBayes, GatherPileupSummaries,GenotypeGVCF, GetPileupSummaries, HaplotypeCaller, interval building, Manta, MarkDuplicates(Spark),MergeVCFs,MSISensorPro, Mutect2, Samtools, snpEff, Strelka, Tiddit, Variantrecalibrator | [GATKBundle](https://console.cloud.google.com/storage/browser/_details/genomics-public-data/resources/broad/hg38/v0/) | https://gatk.broadinstitute.org/hc/en-us/articles/360035890811-Resource-bundle       |
-| fasta_fai             | ApplyBQSR(Spark), ApplyVQSR, ASCAT, Baserecalibrator(Spark), BWA, BWAMem2, CNNScoreVariant, CNVKit, ControlFREEC, DragMap, DEEPVariant, EnsemblVEP, EstimateLibraryComplexity, FilterMutectCalls, FilterVariantTranches, FreeBayes, GatherPileupSummaries,GenotypeGVCF, GetPileupSummaries, HaplotypeCaller, interval building, Manta, MarkDuplicates(Spark),MergeVCFs,MSISensorPro, Mutect2, Samtools, snpEff, Strelka, Tiddit, Variantrecalibrator | [GATKBundle](https://console.cloud.google.com/storage/browser/_details/genomics-public-data/resources/broad/hg38/v0/) | https://gatk.broadinstitute.org/hc/en-us/articles/360035890811-Resource-bundle       |
+| fasta                 | ApplyBQSR(Spark), ApplyVQSR, ASCAT, Baserecalibrator(Spark), BWA, BWAMem2, CNNScoreVariant, CNVKit, ControlFREEC, DragMap, DEEPVariant, EnsemblVEP, EstimateLibraryComplexity, FilterMutectCalls, FilterVariantTranches, FreeBayes, GatherPileupSummaries,GenotypeGVCF, GetPileupSummaries, HaplotypeCaller, interval building, Manta, MarkDuplicates(Spark),MergeVCFs,MSISensorPro, Mutect2, Samtools, SnpEff, Strelka, Tiddit, Variantrecalibrator | [GATKBundle](https://console.cloud.google.com/storage/browser/_details/genomics-public-data/resources/broad/hg38/v0/) | https://gatk.broadinstitute.org/hc/en-us/articles/360035890811-Resource-bundle       |
+| fasta_fai             | ApplyBQSR(Spark), ApplyVQSR, ASCAT, Baserecalibrator(Spark), BWA, BWAMem2, CNNScoreVariant, CNVKit, ControlFREEC, DragMap, DEEPVariant, EnsemblVEP, EstimateLibraryComplexity, FilterMutectCalls, FilterVariantTranches, FreeBayes, GatherPileupSummaries,GenotypeGVCF, GetPileupSummaries, HaplotypeCaller, interval building, Manta, MarkDuplicates(Spark),MergeVCFs,MSISensorPro, Mutect2, Samtools, SnpEff, Strelka, Tiddit, Variantrecalibrator | [GATKBundle](https://console.cloud.google.com/storage/browser/_details/genomics-public-data/resources/broad/hg38/v0/) | https://gatk.broadinstitute.org/hc/en-us/articles/360035890811-Resource-bundle       |
 | germline_resource     | GetPileupsummaries,Mutect2                                                                                                                                                                                                                                                                                                                                                                                                                           | [GATKBundle](https://console.cloud.google.com/storage/browser/_details/genomics-public-data/resources/broad/hg38/v0/) |                                                                                      |
 | germline_resource_tbi | GetPileupsummaries,Mutect2                                                                                                                                                                                                                                                                                                                                                                                                                           | [GATKBundle](https://console.cloud.google.com/storage/browser/_details/genomics-public-data/resources/broad/hg38/v0/) |                                                                                      |
 | intervals             | ApplyBQSR(Spark), ASCAT, Baserecalibrator(Spark), BCFTools, CNNScoreVariants, ControlFREEC, Deepvariant, FilterVariantTranches, FreeBayes, GenotypeGVCF, GetPileupSummaries, HaplotypeCaller, Strelka, mpileup, MSISensorPro, Mutect2, VCFTools                                                                                                                                                                                                      | [GATKBundle](https://console.cloud.google.com/storage/browser/_details/genomics-public-data/resources/broad/hg38/v0/) |                                                                                      |
@@ -743,22 +850,162 @@ For GATK.GRCh38 the links for each reference file and the corresponding processe
 
 ## How to customise SnpEff and VEP annotation
 
-Sarek uses nf-core provided containers for both snpEff and VEP for several reference genomes ('CanFam3', 'GRCh37', 'GRCh38', 'GRCm38' and 'WBcel235').
+SNPeff and VEP both require a large resource of files known as a cache.
+These are folders composed of multiple gigabytes of files which need to be available for the software to properly function.
+To use these, supply the parameters `--vep_cache` and/or `--snpeff_cache` with the locations to the root of the annotation cache folder for each tool.
 
-### Using downloaded cache
+### Specify the cache location
 
-Both `snpEff` and `VEP` enable usage of cache, if no pre-build container is available.
-The cache needs to be made available on the machine where Sarek is run.
-You need to specify the cache directory using `--snpeff_cache` and `--vep_cache` in the command lines or within configuration files.
+Params `--snpeff_cache` and `--vep_cache` are used to specify the locations to the root of the annotation cache folder.
+The cache will be located within a subfolder with the path `${snpeff_species}.${snpeff_version}` for SnpEff and `${vep_species}/${vep_genome}_${vep_cache_version}` for VEP.
+If this directory is missing, Sarek will raise an error.
 
-Example:
+For example this is a typical folder structure for `GRCh38` and `WBCel235`, with SNPeff cache version 105 and VEP cache version 110:
 
-```bash
-nextflow run nf-core/sarek --tools snpEff --step annotate --sample <file.vcf.gz> --snpeff_cache </path/to/snpEff/cache>
-nextflow run nf-core/sarek --tools VEP --step annotate --sample <file.vcf.gz> --vep_cache </path/to/VEP/cache>
+```text
+/data/
+├─ snpeff_cache/
+│  ├─ GRCh38.105/
+│  ├─ WBcel235.105/
+├─ vep_cache/
+│  ├─ caenorhabditis_elegans/
+│  │  ├─ 110_WBCel235/
+│  ├─ homo_sapiens/
+│  │  ├─ 110_GRCh38/
 ```
 
-Similarly, when wanting to use a different cache than the one specified in the iGenomes config file, one can use `--snpeff_db`, `--snpeff_genome`, `--snpeff_version`, `--vep_cache_version`, `--vep_genome`, `--vep_species` and `--vep_version` to overwrite these default value related to the databases, genomes, versions and caches' versions used by these tools.
+For this example, the parameters `--snpeff_cache /data/snpeff_cache` and `--vep_cache /data/vep_cache` would be used.
+Both SnpEff and VEP will figure out internally the path towards the specific cache version / species the annotation should be performed given the parameters specified to Sarek.
+
+### Change cache version and species
+
+By default all is specified in the [igenomes.config](https://github.com/nf-core/sarek/blob/master/conf/igenomes.config) file.
+Explanation can be found for all params in the documentation:
+
+- [snpeff_db](https://nf-co.re/sarek/parameters#snpeff_db)
+- [snpeff_genome](https://nf-co.re/sarek/parameters#snpeff_genome)
+- [vep_genome](https://nf-co.re/sarek/parameters#vep_genome)
+- [vep_species](https://nf-co.re/sarek/parameters#vep_species)
+- [vep_cache_version](https://nf-co.re/sarek/parameters#vep_cache_version)
+
+With the previous example of `GRCh38`, these are the values that were used for these params:
+
+```bash
+snpeff_db         = '105'
+snpeff_genome     = 'GRCh38'
+vep_cache_version = '110'
+vep_genome        = 'GRCh38'
+vep_species       = 'homo_sapiens'
+```
+
+### Usage recommendation with AWS iGenomes
+
+The cache for each of these annotation tools has its own structure and is frequently updated, therefore it is kept separate from AWS iGenomes. It is not recommended to put any cache for each of this annotation tools in your local AWS iGenomes folder.
+
+A classical organisation on a shared storage area might be:
+
+```bash
+/data/igenomes/
+/data/cache/snpeff_cache
+/data/cache/vep_cache
+```
+
+Which can then be used this way in Sarek:
+
+```bash
+nextflow run nf-core/sarek \
+    --igenomes_base /data/igenomes/ \
+    --snpeff_cache /data/cache/snpeff_cache/ \
+    --vep_cache /data/cache/vep_cache/ \
+    ...
+```
+
+Alternatively the data may be stored on AWS S3 storage, therefore the parameters might be:
+
+```bash
+s3://my-reference-data/igenomes/
+s3://my-reference-data/cache/snpeff_cache/
+s3://my-reference-data/cache/vep_cache/
+```
+
+Which can then be used this way in Sarek:
+
+```bash
+nextflow run nf-core/sarek \
+    --igenomes_base s3://my-reference-data/igenomes/ \
+    --snpeff_cache s3://my-reference-data/cache/ensemblvep/ \
+    --vep_cache s3://my-reference-data/cache/snpeff/ \
+    ...
+```
+
+These params can be specified in a config file or in a profile using the params scope, or even in a json or a yaml file using the `-params-file` nextflow option.
+
+Note: we recommend storing each annotation cache in a separate directory so each cache version is handled differently.
+This may mean you have many similar directories but will dramatically reduce the storage burden on machines running the SnpEff or VEP process.
+
+### Use annotation-cache for SnpEff and VEP
+
+[Annotation-cache](https://annotation-cache.github.io) is an open AWS registry resource that stores a mirror of some cache files on AWS S3 which can be used with Sarek.
+It contains some genome builds which can be found by checking the contents of the S3 bucket.
+
+SNPeff and VEP cache are stored at the following location on S3:
+
+```bash
+snpeff_cache = s3://annotation-cache/snpeff_cache/
+vep_cache = s3://annotation-cache/vep_cache/
+```
+
+The contents of said cache can be listed with the following command using the S3 CLI:
+
+```bash
+aws s3 --no-sign-request ls s3://annotation-cache/snpeff_cache
+aws s3 --no-sign-request ls s3://annotation-cache/vep_cache/
+```
+
+Since both Snpeff and VEP are internally figuring the path towards the specific cache version / species, `annotation-cache` is using an extra set of keys to specify the species and genome build.
+
+Which is handled internally by Sarek.
+
+Please refer to the [annotation-cache documentation](https://annotation-cache.github.io) for more details.
+
+### Use Sarek to download cache and annotate in one go
+
+Both VEP and snpEff come with built-in download functionality to download the cache prior to use.
+Sarek includes these as optional processes.
+Use the params `--download_cache`, and specify the tool with `--tools` and Sarek will download the relevant cache (`snpeff` and/or `vep`) using their respective download functions.
+It is recommended to save the cache somewhere highly accessible for subsequent runs of Sarek, so the cache does not have to be re-downloaded.
+
+Sarek will automatically download the cache using each tools (SnpEff and/or VEP) to your work directory.
+And subsequently perform the annotation of VCF files specified as an input in a samplesheet or produced by Sarek.
+
+### Only download cache
+
+Using the params `--build_only_index` allow for only downloading the cache for the specified tools.
+
+### Location for the cache
+
+Cache can be downloaded in the specified `--outdir_cache` location.
+Else, it will be downloaded in `cache/` in the specified `--outdir` location.
+
+This command could be used to download the cache for both tools in the specified `--outdir_cache` location:
+
+```bash
+nextflow run nf-core/sarek --outdir results --outdir_cache /path_to/my-own-cache --tools vep,snpeff --download_cache --build_only_index --input false
+```
+
+This command could be used to point to the recently downloaded cache and run SnpEff and VEP:
+
+```bash
+nextflow run nf-core/sarek --outdir results --vep_cache /path_to/my-own-cache/vep_cache --snpeff_cache /path_to/my-own-cache/snpeff_cache --tools vep,snpeff --input samplesheet_vcf.csv
+```
+
+### Create containers with pre-downloaded cache
+
+nf-core is no longer maintaining containers with pre-downloaded cache. Hosting the cache within the container is not recommended as it can cause a number of problems. Instead we recommned using an external cache. The following is left for legacy reasons.
+
+But for each of these tools, an helper script `build.sh` can be found at the root of the tool folder in the nf-core module repo ([snpeff](https://github.com/nf-core/modules/tree/master/modules/nf-core/snpeff) and [ensemblvep](https://github.com/nf-core/modules/tree/master/modules/nf-core/ensemblvep)), and can be adapted for your usage.
+
+Overwritting the container declaration is then possible to accomodate for the new container.
 
 ### Using VEP plugins
 
@@ -803,10 +1050,13 @@ Enable with `--vep_spliceregion`.
 
 For more details, see [here](https://www.ensembl.org/info/docs/tools/vep/script/vep_plugins.html#spliceregion) and [here](https://www.ensembl.info/2018/10/26/cool-stuff-the-vep-can-do-splice-site-variant-annotation/)."
 
-## Requested resources for the tools
+### BCFTOOLS Annotate
 
-Resource requests are difficult to generalize and are often dependent on input data size. Currently, the number of cpus and memory requested by default were adapted from tests on 5 ICGC paired whole-genome sequencing samples with approximately 40X and 80X depth.
-For targeted data analysis, this is overshooting by a lot. In this case resources for each process can be limited by either setting `--max_memory` and `-max_cpus` or tailoring the request by process name as described [here](#resource-requests). If you are using sarek for a certain data type regulary, and would like to make these requests available to others on your system, an institution-specific, pipeline-specific config file can be added [here](https://github.com/nf-core/configs/tree/master/conf/pipeline/sarek).
+It is possible to annotate a VCF file with a custom annotation file using [BCFTOOLS Annotate](https://samtools.github.io/bcftools/bcftools.html#annotate). This can be done by setting adding bcfann to the tools list and setting the following parameters:
+
+- annotations: path to vcf annotation file
+- annotations_index: path to vcf annotation index file
+- header_lines: path to header lines file
 
 ## MultiQC related issues
 
@@ -821,6 +1071,66 @@ Error type      Number of errors
 ERROR_CHROMOSOME_NOT_FOUND      17522411
 ```
 
-## How to set up sarek to use sentieon
+## Sentieon
 
-Sarek 3.0.1 is currently not supporting sentieon. It is planned for the upcoming release 3.1. In the meantime, please revert to the last release 2.7.2.
+[Sentieon](https://www.sentieon.com/) is a commercial solution to process genomics data with high computing efficiency, fast turnaround time, exceptional high accuracy, and 100% consistency.
+
+In particular, Sentieon contains what may be view as speedup version of some standard GATK tools, like bwamem and haplotyper. Sarek contains support for some of the functions in Sentieon. In order to use those functions, the user will need to supply Sarek with a license for Sentieon.
+
+### Setup of Sentieon license
+
+Sentieon supply license in the form of a string-value (a url) or a file. It should be base64-encoded and stored in a nextflow secret named `SENTIEON_LICENSE_BASE64`. If a license string (url) is supplied, then the nextflow secret should be set like this:
+
+```bash
+nextflow secrets set SENTIEON_LICENSE_BASE64 $(echo -n <sentieon_license_string> | base64 -w 0)
+```
+
+If a license file is supplied, then the nextflow secret should be set like this:
+
+```bash
+nextflow secrets set SENTIEON_LICENSE_BASE64 \$(cat <sentieon_license_file.lic> | base64 -w 0)
+```
+
+### Available Sentieon functions
+
+Sarek contains the following Sentieon functions from [DnaSeq](https://support.sentieon.com/manual/DNAseq_usage/dnaseq/) : [bwa mem](https://support.sentieon.com/manual/usages/general/#bwa-mem-syntax), [LocusCollector](https://support.sentieon.com/manual/usages/general/#locuscollector-algorithm) + [Dedup](https://support.sentieon.com/manual/usages/general/#dedup-algorithm), [Haplotyper](https://support.sentieon.com/manual/usages/general/#haplotyper-algorithm), [GVCFtyper](https://support.sentieon.com/manual/usages/general/#gvcftyper-algorithm) and [VarCal](https://support.sentieon.com/manual/usages/general/#varcal-algorithm) + [ApplyVarCal](https://support.sentieon.com/manual/usages/general/#applyvarcal-algorithm), so the basic processing of alignment of fastq-files to VCF-files can be done using speedup Sentieon functions.
+
+Sarek also contains the Sentieon functions [DnaScope](https://support.sentieon.com/manual/usages/general/?highlight=dnamodelapply#dnascope-algorithm) and [DNAModelApply](https://support.sentieon.com/manual/usages/general/?highlight=dnamodelapply#dnamodelapply-algorithm).
+
+### Basic usage of Sentieon functions
+
+To use Sentieon's aligner `bwa mem`, set the aligner option `sentieon-bwamem`.
+(This can, for example, be done by adding `--aligner sentieon-bwamem` to the `nextflow run` command.)
+
+To use Sentieon's function `Dedup`, specify `sentieon_dedup` as one of the tools.
+(This can, for example, be done by adding `--tools sentieon_dedup` to the `nextflow run` command.)
+
+To use Sentieon's function `DNAscope`, specify `sentieon_dnascope` as one of the tools.
+This can, for example, be done by adding `--tools sentieon_dnascope` to the `nextflow run` command.
+In order to skip Sentieon's variant-filter `DNAModelApply`, one may add `--skip_tools dnascope_filter` to the `nextflow run` command.
+Sarek also provides the option `sentieon_dnascope_emit_mode` which can be used to set the [emit-mode](https://support.sentieon.com/manual/usages/general/#dnascope-algorithm) of Sentieon's dnascope.
+Sentieon's dnascope can output both a vcf-file and a gvcf-file in the same run; this is achieved by setting `sentieon_dnascope_emit_mode` to `<vcf_emit_mode>,gvcf`, where `<vcf_emit_mode>` is `variant`, `confident` or `all`.
+
+Sentieon's function `Haplotyper` is used in much the same way as `DNAscope`.
+To use Sentieon's function `Haplotyper`, specify `sentieon_haplotyper` as one of the tools.
+This can, for example, be done by adding `--tools sentieon_haplotyper` to the `nextflow run` command.
+In order to skip the GATK-based variant-filter, one may add `--skip_tools haplotyper_filter` to the `nextflow run` command.
+Sarek also provides the option `sentieon_haplotyper_emit_mode` which can be used to set the [emit-mode](https://support.sentieon.com/manual/usages/general/#haplotyper-algorithm) of Sentieon's haplotyper.
+Sentieon's haplotyper can output both a vcf-file and a gvcf-file in the same run; this is achieved by setting `sentieon_haplotyper_emit_mode` to `<vcf_emit_mode>,gvcf`, where `<vcf_emit_mode>` is `variant`, `confident` or `all`.
+
+To use Sentieon's function `GVCFtyper` along with Sention's version of VQSR (`VarCal` and `ApplyVarCal`) for joint-germline genotyping, specify `sentieon_haplotyper` as one of the tools, set the option `sentieon_haplotyper_emit_mode` to `gvcf`, and add the option `joint_germline`.
+This can, for example, be done by adding `--tools sentieon_haplotyper --joint_germline --sentieon_haplotyper_emit_mode gvcf` to the `nextflow run` command.
+If `sentieon_dnascope` is chosen instead of `sentieon_haplotyper`, then Sention's version of VQSR is skipped, as recommended by Sentieon.
+
+### Joint germline variant calling
+
+Sentieon's [GVCFtyper](https://support.sentieon.com/manual/usages/general/#gvcftyper-algorithm) does not support the [GenomicsDB](https://gatk.broadinstitute.org/hc/en-us/articles/5358869876891-GenomicsDBImport) datastore format. This means that, in contrast to the GATK based joint germline variant calling subworkflow in Sarek, the Sentieon/DNAseq based joint germline variant calling subworkflow does not use the GenomicsDB datastore format.
+
+### QualCal (BQSR)
+
+Currently, Sentieon's version of BQSR, QualCal, is not available in Sarek. Recent Illumina sequencers tend to provide well-calibrated BQs, so BQSR may not provide much benefit. By default Sarek runs GATK's BQSR; that can be skipped by adding the option `--skip_tools baserecalibrator`.
+
+## Requested resources for the tools
+
+Resource requests are difficult to generalize and are often dependent on input data size. Currently, the number of cpus and memory requested by default were adapted from tests on 5 ICGC paired whole-genome sequencing samples with approximately 40X and 80X depth.
+For targeted data analysis, this is overshooting by a lot. In this case resources for each process can be limited by either setting `--max_memory` and `-max_cpus` or tailoring the request by process name as described [here](#resource-requests). If you are using sarek for a certain data type regulary, and would like to make these requests available to others on your system, an institution-specific, pipeline-specific config file can be added [here](https://github.com/nf-core/configs/tree/master/conf/pipeline/sarek).
